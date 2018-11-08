@@ -13,6 +13,7 @@ import gzip
 import datetime
 import time
 import math
+import os
 
 print('Loading function')
 
@@ -20,13 +21,14 @@ print('Loading function')
 # Constants
 #======================================================================================================================
 # Configurables
-OUTPUT_BUCKET = None
-IP_SET_ID_MANUAL_BLOCK = None
-IP_SET_ID_AUTO_BLOCK = None
+OUTPUT_BUCKET = os.environ['OUTPUT_BUCKET']
+IP_SET_ID_MANUAL_BLOCK = os.environ['IP_SET_ID_MANUAL_BLOCK']
+IP_SET_ID_AUTO_BLOCK = os.environ['IP_SET_ID_AUTO_BLOCK']
+BLACKLIST_BLOCK_PERIOD = os.environ['BLACKLIST_BLOCK_PERIOD'] # in minutes
+REQUEST_PER_MINUTE_LIMIT = os.environ['REQUEST_PER_MINUTE_LIMIT']
 
-BLACKLIST_BLOCK_PERIOD = None # in minutes
-REQUEST_PER_MINUTE_LIMIT = None
 BLOCK_ERROR_CODES = ['400','403','404','405'] # error codes to parse logs for
+
 
 LIMIT_IP_ADDRESS_RANGES_PER_IP_MATCH_CONDITION = 1000
 API_CALL_NUM_RETRIES = 3
@@ -311,7 +313,7 @@ def lambda_handler(event, context):
 
     try:
         if key_name == OUTPUT_FILE_NAME:
-            print '[lambda_handler] \tIgnore processinf output file'
+            print '[lambda_handler] \tIgnore processing output file'
             return
 
         #--------------------------------------------------------------------------------------------------------------
@@ -323,30 +325,30 @@ def lambda_handler(event, context):
         global BLACKLIST_BLOCK_PERIOD
         global REQUEST_PER_MINUTE_LIMIT
 
-        if (OUTPUT_BUCKET == None or IP_SET_ID_MANUAL_BLOCK == None or
-            IP_SET_ID_AUTO_BLOCK == None or BLACKLIST_BLOCK_PERIOD == None or
-            REQUEST_PER_MINUTE_LIMIT == None):
+        # if (OUTPUT_BUCKET == None or IP_SET_ID_MANUAL_BLOCK == None or
+        #     IP_SET_ID_AUTO_BLOCK == None or BLACKLIST_BLOCK_PERIOD == None or
+        #     REQUEST_PER_MINUTE_LIMIT == None):
 
-            outputs = {}
-            cf = boto3.client('cloudformation')
-            stack_name = context.invoked_function_arn.split(':')[6].rsplit('-', 2)[0]
-            response = cf.describe_stacks(StackName=stack_name)
-            for e in response['Stacks'][0]['Outputs']:
-                outputs[e['OutputKey']] = e['OutputValue']
+        #     outputs = {}
+        #     cf = boto3.client('cloudformation')
+        #     stack_name = context.invoked_function_arn.split(':')[6].rsplit('-', 2)[0]
+        #     response = cf.describe_stacks(StackName=stack_name)
+        #     for e in response['Stacks'][0]['Outputs']:
+        #         outputs[e['OutputKey']] = e['OutputValue']
 
-            if OUTPUT_BUCKET == None:
-                if 'CloudFrontAccessLogBucket' in outputs.keys():
-                    OUTPUT_BUCKET = outputs['CloudFrontAccessLogBucket']
-                else:
-                    OUTPUT_BUCKET = bucket_name
-            if IP_SET_ID_MANUAL_BLOCK == None:
-                IP_SET_ID_MANUAL_BLOCK = outputs['ManualBlockIPSetID']
-            if IP_SET_ID_AUTO_BLOCK == None:
-                IP_SET_ID_AUTO_BLOCK = outputs['AutoBlockIPSetID']
-            if BLACKLIST_BLOCK_PERIOD == None:
-                BLACKLIST_BLOCK_PERIOD = int(outputs['WAFBlockPeriod']) # in minutes
-            if REQUEST_PER_MINUTE_LIMIT == None:
-                REQUEST_PER_MINUTE_LIMIT = int(outputs['RequestThreshold'])
+        #     if OUTPUT_BUCKET == None:
+        #         if 'CloudFrontAccessLogBucket' in outputs.keys():
+        #             OUTPUT_BUCKET = outputs['CloudFrontAccessLogBucket']
+        #         else:
+        #             OUTPUT_BUCKET = bucket_name
+        #     if IP_SET_ID_MANUAL_BLOCK == None:
+        #         IP_SET_ID_MANUAL_BLOCK = outputs['ManualBlockIPSetID']
+        #     if IP_SET_ID_AUTO_BLOCK == None:
+        #         IP_SET_ID_AUTO_BLOCK = outputs['AutoBlockIPSetID']
+        #     if BLACKLIST_BLOCK_PERIOD == None:
+        #         BLACKLIST_BLOCK_PERIOD = int(outputs['WAFBlockPeriod']) # in minutes
+        #     if REQUEST_PER_MINUTE_LIMIT == None:
+        #         REQUEST_PER_MINUTE_LIMIT = int(outputs['RequestThreshold'])
 
         print "[lambda_handler] \t\tOUTPUT_BUCKET = %s"%OUTPUT_BUCKET
         print "[lambda_handler] \t\tIP_SET_ID_MANUAL_BLOCK = %s"%IP_SET_ID_MANUAL_BLOCK
